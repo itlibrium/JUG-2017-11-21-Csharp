@@ -118,6 +118,42 @@ namespace JUG.Tests
                 .Test();
         }
 
+        [Fact]
+        public void SparePartsCostIsNotAddedIfLessThenAvailableLimit()
+        {
+            BddScenario
+                .Given<Fixture>()
+                    .And(f => f.MinPrice(200))
+                    .And(f => f.PricePerHour(100))
+                    .And(f => f.Duration(3))
+                    .And(f => f.UsedSparePartPrices(500, 300))
+                    .And(f => f.AvailableFreeServices(2))
+                    .And(f => f.FreeServiceTimeLimit(5))
+                    .And(f => f.AvailableSparePartsCostLimit(1000))
+                .When(f => f.ServiceIsFinished())
+                .Then(f => f.PriceShouldBe(0))
+                    .And(f => f.SparePartsCostLimitUsedShouldBe(800))
+                .Test();
+        }
+
+        [Fact]
+        public void SparePartsCostOverAvailableLimitIsAdded()
+        {
+            BddScenario
+                .Given<Fixture>()
+                    .And(f => f.MinPrice(200))
+                    .And(f => f.PricePerHour(100))
+                    .And(f => f.Duration(3))
+                    .And(f => f.UsedSparePartPrices(500, 300))
+                    .And(f => f.AvailableFreeServices(2))
+                    .And(f => f.FreeServiceTimeLimit(5))
+                    .And(f => f.AvailableSparePartsCostLimit(500))
+                .When(f => f.ServiceIsFinished())
+                .Then(f => f.PriceShouldBe(300))
+                    .And(f => f.SparePartsCostLimitUsedShouldBe(0))
+                .Test();
+        }
+
         private class Fixture
         {
             private decimal _minPrice;
@@ -127,6 +163,7 @@ namespace JUG.Tests
             private bool _isWarranty;
             private int _freeServices;
             private double _freeServicesTimeLimit;
+            private decimal _sparePartsCostLimit;
 
             private bool _isInitialized;
 
@@ -142,6 +179,7 @@ namespace JUG.Tests
             public void IsWarrantyService() => _isWarranty = true;
             public void AvailableFreeServices(int freeServices) => _freeServices = freeServices;
             public void FreeServiceTimeLimit(double hours) => _freeServicesTimeLimit = hours;
+            public void AvailableSparePartsCostLimit(decimal sparePartsCostLimit) => _sparePartsCostLimit = sparePartsCostLimit;
 
             public void ServiceIsFinished()
             {
@@ -152,6 +190,8 @@ namespace JUG.Tests
             public void PriceShouldBe(decimal price) => _dbContext.Services.Find(_serviceId).Price.Should().Be(price);
             public void FreeServicesUsedShouldBe(int count) => 
                 _dbContext.Services.Find(_serviceId).Client.Contract.FreeServicesUsed.Should().Be(count);
+            public void SparePartsCostLimitUsedShouldBe(decimal value) =>
+                _dbContext.Services.Find(_serviceId).Client.Contract.SparePartsCostLimitUsed.Should().Be(value);
 
             private void Initialize()
             {
@@ -174,10 +214,11 @@ namespace JUG.Tests
                         },
                         FreeServiceTimeLimit = _freeServicesTimeLimit
                     },
-                    Contract = _freeServices > 0
+                    Contract = _freeServices > 0 || _sparePartsCostLimit > 0
                         ? new Contract
                         {
-                            FreeServices = _freeServices
+                            FreeServices = _freeServices,
+                            SparePartsCostLimit = _sparePartsCostLimit
                         }
                         : null
                 };

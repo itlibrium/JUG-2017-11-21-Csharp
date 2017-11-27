@@ -62,25 +62,38 @@ namespace JUG.Logic
                 }
                 else
                 {
+                    decimal price = 0;
+                    decimal sparePartsCostLimit = contract.SparePartsCostLimit - contract.SparePartsCostLimitUsed;
+                    if (sparePartsCostLimit >= sparePartsCost)
+                    {
+                        contract.SparePartsCostLimitUsed += sparePartsCost;
+                        sparePartsCost = 0;
+                    }
+                    else
+                    {
+                        contract.SparePartsCostLimitUsed = 0;
+                        sparePartsCost -= sparePartsCostLimit;
+                    }
+                    price += sparePartsCost;
+
                     if (contract.FreeServicesUsed < contract.FreeServices)
                     {
                         contract.FreeServicesUsed++;
-                        _contractRepository.Save(contract);
-
+                        
                         double freeServiceTimeLimit = service.Client.EquipmentModel.FreeServiceTimeLimit;
-                        decimal price = sparePartsCost;
                         if (service.Duration > freeServiceTimeLimit)
                         {
                             price += service.Client.EquipmentModel.PricingCategory.PricePerHour * (decimal)(service.Duration - freeServiceTimeLimit);
                         }
-
-                        service.Price = price;
                     }
                     else
                     {
                         PricingCategory pricingCategory = service.Client.EquipmentModel.PricingCategory;
-                        service.Price = Math.Max(pricingCategory.MinPrice, pricingCategory.PricePerHour * (decimal)service.Duration) + sparePartsCost;
+                        price += Math.Max(pricingCategory.MinPrice, pricingCategory.PricePerHour * (decimal)service.Duration);
                     }
+
+                    _contractRepository.Save(contract);
+                    service.Price = price;
                 }
             }
             

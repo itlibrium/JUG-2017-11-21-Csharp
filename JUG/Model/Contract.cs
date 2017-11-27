@@ -6,6 +6,9 @@
         public int FreeServices { get; set; }
         public int FreeServicesUsed { get; set; }
 
+        public decimal SparePartsCostLimit { get; set; }
+        public decimal SparePartsCostLimitUsed { get; set; }
+
         //...
     }
 }
