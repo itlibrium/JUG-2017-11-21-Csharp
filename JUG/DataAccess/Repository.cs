@@ -2,7 +2,7 @@
 
 namespace JUG.DataAccess
 {
-    public class Repository : IServiceRepository, ISparePartRepository
+    public class Repository : IServiceRepository, ISparePartRepository, IContractRepository
     {
         private readonly JugDbContext _dbContext;
 
@@ -25,6 +25,17 @@ namespace JUG.DataAccess
         SparePart ISparePartRepository.Get(int id)
         {
             return _dbContext.SpareParts.Find(id);
+        }
+
+        Contract IContractRepository.Get(int id)
+        {
+            return _dbContext.Contracts.Find(id);
+        }
+
+        void IContractRepository.Save(Contract contract)
+        {
+            _dbContext.Contracts.Update(contract);
+            _dbContext.SaveChanges();
         }
     }
 }

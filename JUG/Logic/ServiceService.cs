@@ -11,15 +11,18 @@ namespace JUG.Logic
     {
         private readonly IServiceRepository _serviceRepository;
         private readonly ISparePartRepository _sparePartRepository;
-        
+        private readonly IContractRepository _contractRepository;
+
         //...
-        
+
         public ServiceService(
             IServiceRepository serviceRepository,
-            ISparePartRepository sparePartRepository)
+            ISparePartRepository sparePartRepository,
+            IContractRepository contractRepository)
         {
             _serviceRepository = serviceRepository;
             _sparePartRepository = sparePartRepository;
+            _contractRepository = contractRepository;
         }
         
         //...
@@ -51,8 +54,27 @@ namespace JUG.Logic
                     sparePartsCost += sparePart.Price;
                 }
 
-                PricingCategory pricingCategory = service.Client.EquipmentModel.PricingCategory;
-                service.Price = Math.Max(pricingCategory.MinPrice, pricingCategory.PricePerHour * (decimal) service.Duration) + sparePartsCost;
+                Contract contract = service.Client.Contract;
+                if (contract == null)
+                {
+                    PricingCategory pricingCategory = service.Client.EquipmentModel.PricingCategory;
+                    service.Price = Math.Max(pricingCategory.MinPrice, pricingCategory.PricePerHour * (decimal)service.Duration) + sparePartsCost;
+                }
+                else
+                {
+                    if (contract.FreeServicesUsed < contract.FreeServices)
+                    {
+                        contract.FreeServicesUsed++;
+                        _contractRepository.Save(contract);
+
+                        service.Price = sparePartsCost;
+                    }
+                    else
+                    {
+                        PricingCategory pricingCategory = service.Client.EquipmentModel.PricingCategory;
+                        service.Price = Math.Max(pricingCategory.MinPrice, pricingCategory.PricePerHour * (decimal)service.Duration) + sparePartsCost;
+                    }
+                }
             }
             
             service.Status = ServiceStatus.Done;

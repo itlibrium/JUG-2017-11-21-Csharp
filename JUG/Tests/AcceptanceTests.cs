@@ -71,6 +71,36 @@ namespace JUG.Tests
                 .Test();
         }
 
+        [Fact]
+        public void LabourCostIsNotAddedWhenFreeServiceIsAvailable()
+        {
+            BddScenario
+                .Given<Fixture>()
+                    .And(f => f.MinPrice(200))
+                    .And(f => f.PricePerHour(100))
+                    .And(f => f.Duration(3))
+                    .And(f => f.UsedSparePartPrices(500, 300))
+                    .And(f => f.AvailableFreeServices(2))
+                .When(f => f.ServiceIsFinished())
+                .Then(f => f.PriceShouldBe(800))
+                .Test();
+        }
+
+        [Fact]
+        public void FreeServicesUsedIsUpdatedWhenFreeServiceIsAvailable()
+        {
+            BddScenario
+                .Given<Fixture>()
+                    .And(f => f.MinPrice(200))
+                    .And(f => f.PricePerHour(100))
+                    .And(f => f.Duration(3))
+                    .And(f => f.UsedSparePartPrices(500, 300))
+                    .And(f => f.AvailableFreeServices(2))
+                .When(f => f.ServiceIsFinished())
+                .Then(f => f.FreeServicesUsedShouldBe(1))
+                .Test();
+        }
+
         private class Fixture
         {
             private decimal _minPrice;
@@ -78,6 +108,7 @@ namespace JUG.Tests
             private double _duration;
             private readonly List<SparePart> _usedSpareParts = new List<SparePart>();
             private bool _isWarranty;
+            private int _freeServices;
 
             private bool _isInitialized;
 
@@ -91,6 +122,7 @@ namespace JUG.Tests
             public void Duration(double hours) => _duration = hours;
             public void UsedSparePartPrices(params decimal[] prices) => _usedSpareParts.AddRange(prices.Select(p => new SparePart { Price = p }));
             public void IsWarrantyService() => _isWarranty = true;
+            public void AvailableFreeServices(int freeServices) => _freeServices = freeServices;
 
             public void ServiceIsFinished()
             {
@@ -99,6 +131,8 @@ namespace JUG.Tests
             }
 
             public void PriceShouldBe(decimal price) => _dbContext.Services.Find(_serviceId).Price.Should().Be(price);
+            public void FreeServicesUsedShouldBe(int count) => 
+                _dbContext.Services.Find(_serviceId).Client.Contract.FreeServicesUsed.Should().Be(_freeServices - 1);
 
             private void Initialize()
             {
@@ -119,7 +153,13 @@ namespace JUG.Tests
                             MinPrice = _minPrice,
                             PricePerHour = _pricePerHour
                         }
-                    }
+                    },
+                    Contract = _freeServices > 0
+                        ? new Contract
+                        {
+                            FreeServices = _freeServices
+                        }
+                        : null
                 };
                 dbContext.Clients.Add(client);
 

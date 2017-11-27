@@ -9,6 +9,7 @@ namespace JUG.DataAccess
         public DbSet<SparePart> SpareParts { get; set; }
         public DbSet<Service> Services { get; set; }
         public DbSet<Client> Clients { get; set; }
+        public DbSet<Contract> Contracts { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
