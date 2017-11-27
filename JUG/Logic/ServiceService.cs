@@ -67,7 +67,14 @@ namespace JUG.Logic
                         contract.FreeServicesUsed++;
                         _contractRepository.Save(contract);
 
-                        service.Price = sparePartsCost;
+                        double freeServiceTimeLimit = service.Client.EquipmentModel.FreeServiceTimeLimit;
+                        decimal price = sparePartsCost;
+                        if (service.Duration > freeServiceTimeLimit)
+                        {
+                            price += service.Client.EquipmentModel.PricingCategory.PricePerHour * (decimal)(service.Duration - freeServiceTimeLimit);
+                        }
+
+                        service.Price = price;
                     }
                     else
                     {

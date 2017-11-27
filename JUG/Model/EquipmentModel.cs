@@ -4,7 +4,9 @@
     {
         public int Id { get; set; }
         public PricingCategory PricingCategory { get; set; }
-        
+
+        public double FreeServiceTimeLimit { get; set; }
+
         //...
     }
 }
