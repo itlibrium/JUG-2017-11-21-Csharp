@@ -10,7 +10,9 @@ namespace JUG.Model
         public double Duration { get; set; }
         public List<SparePart> SpareParts { get; set; }
         public decimal Price { get; set; }
-        
+
+        public bool IsWarranty { get; set; }
+
         //...
     }
 }

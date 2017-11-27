@@ -38,15 +38,22 @@ namespace JUG.Logic
                 spareParts.Add(_sparePartRepository.Get(sparePartId));
             }
             service.SpareParts = spareParts;
-            
-            decimal sparePartsCost = 0;
-            foreach (SparePart sparePart in service.SpareParts)
-            {
-                sparePartsCost += sparePart.Price;
-            }
 
-            PricingCategory pricingCategory = service.Client.EquipmentModel.PricingCategory;
-            service.Price = Math.Max(pricingCategory.MinPrice, pricingCategory.PricePerHour * (decimal) service.Duration) + sparePartsCost;
+            if (service.IsWarranty)
+            {
+                service.Price = 0;
+            }
+            else
+            {
+                decimal sparePartsCost = 0;
+                foreach (SparePart sparePart in service.SpareParts)
+                {
+                    sparePartsCost += sparePart.Price;
+                }
+
+                PricingCategory pricingCategory = service.Client.EquipmentModel.PricingCategory;
+                service.Price = Math.Max(pricingCategory.MinPrice, pricingCategory.PricePerHour * (decimal) service.Duration) + sparePartsCost;
+            }
             
             service.Status = ServiceStatus.Done;
             _serviceRepository.Save(service);
