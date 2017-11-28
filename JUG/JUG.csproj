@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" Version="4.19.4" />
+    <PackageReference Include="ITLibrium.BDD" Version="1.1.0" />
+    <PackageReference Include="ITLibrium.Hexagon.App" Version="1.1.0" />
+    <PackageReference Include="ITLibrium.Hexagon.App.Meta" Version="1.0.0" />
+    <PackageReference Include="ITLibrium.Hexagon.App.SimpleInjector" Version="1.0.0" />
+    <PackageReference Include="ITLibrium.Hexagon.Domain.Meta" Version="1.0.0" />
+    <PackageReference Include="ITLibrium.Hexagon.Domain.SimpleInjector" Version="1.0.0" />
+    <PackageReference Include="ITLibrium.Hexagon.SimpleInjector" Version="1.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="2.0.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
+    <PackageReference Include="xunit" Version="2.3.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.3.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Tests\" />
+  </ItemGroup>
+</Project>
