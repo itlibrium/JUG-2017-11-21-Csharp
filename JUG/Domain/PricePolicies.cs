@@ -27,6 +27,11 @@ namespace JUG.Domain
                 .Aggregate(Money.Zero, (total, price) => total + price);
         }
 
+        public static PricePolicy Free()
+        {
+            return serviceAction => Money.Zero;
+        }
+
         public static PricePolicy Sum(params PricePolicy[] policies)
         {
             return serviceAction => policies.Aggregate(Money.Zero, (total, policy) => total + policy(serviceAction));

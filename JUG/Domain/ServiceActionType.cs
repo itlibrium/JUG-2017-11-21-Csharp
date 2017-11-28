@@ -3,6 +3,8 @@
     public enum ServiceActionType
     {
         Review,
-        Repair
+        Repair,
+        WarrantyReview,
+        WarrantyRepair
     }
 }

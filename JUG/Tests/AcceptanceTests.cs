@@ -59,12 +59,28 @@ namespace JUG.Tests
                 .Test();
         }
 
+        [Fact]
+        public void WarrantyCostCalculatedCorrectly()
+        {
+            BddScenario
+                .Given<Fixture>()
+                    .And(f => f.MinPrice(200))
+                    .And(f => f.PricePerHour(100))
+                    .And(f => f.Duration(3))
+                    .And(f => f.UsedSparePartPrices(500, 300))
+                    .And(f => f.IsWarrantyService())
+                .When(f => f.ServiceIsFinished())
+                .Then(f => f.PriceShouldBe(0))
+                .Test();
+        }
+
         private class Fixture
         {
             private decimal _minPrice;
             private decimal _pricePerHour;
             private double _duration;
             private readonly List<SparePart> _usedSpareParts = new List<SparePart>();
+            private bool _isWarranty;
 
             private bool _isInitialized;
 
@@ -77,6 +93,7 @@ namespace JUG.Tests
             public void PricePerHour(decimal pricePerHour) => _pricePerHour = pricePerHour;
             public void Duration(double hours) => _duration = hours;
             public void UsedSparePartPrices(params decimal[] prices) => _usedSpareParts.AddRange(prices.Select(p => new SparePart { Price = p }));
+            public void IsWarrantyService() => _isWarranty = true;
 
             public void ServiceIsFinished()
             {
@@ -87,7 +104,7 @@ namespace JUG.Tests
                         new[]{
                             new ServiceActionDto
                             {
-                                Type = 1,
+                                Type = _isWarranty ? (int)ServiceActionType.WarrantyRepair : (int)ServiceActionType.Repair,
                                 Hours = _duration,
                                 SparePartIds = _usedSpareParts.Count == 0 ? new int[0] : _usedSpareParts.Select(p => p.Id).ToArray()
                             }}))

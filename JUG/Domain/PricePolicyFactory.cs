@@ -21,8 +21,21 @@ namespace JUG.Domain
             IReadOnlyDictionary<int, Money> sparePartPrices = await _sparePartsFacade.GetPrices();
             
             return PricePolicies.Sum(
-                PricePolicies.Labour(pricingCategory.PricePerHour, pricingCategory.MinPrice),
-                PricePolicies.SparePartsCost(sparePartPrices));
+                PricePolicies
+                    .Labour(pricingCategory.PricePerHour, pricingCategory.MinPrice)
+                    .When(IsNotWarranty),
+                PricePolicies
+                    .SparePartsCost(sparePartPrices)
+                    .When(IsNotWarranty),
+                PricePolicies
+                    .Free()
+                    .When(IsWarranty));
         }
+
+        private static bool IsNotWarranty(ServiceAction serviceAction) => !IsWarranty(serviceAction);
+
+        private static bool IsWarranty(ServiceAction serviceAction) =>
+            serviceAction.Type == ServiceActionType.WarrantyRepair ||
+            serviceAction.Type == ServiceActionType.WarrantyReview;
     }
 }
