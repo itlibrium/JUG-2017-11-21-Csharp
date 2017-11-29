@@ -8,6 +8,10 @@ namespace JUG.Domain
         public static Money Zero => new Money(0);
         public static Money FromDecimal(decimal value) => new Money(value);
         
+        public static Money Sum(Money money1, Money money2) => money1 + money2;
+        public static Money Max(Money money1, Money money2) => new Money(Math.Max(money1._value, money2._value));
+        public static Money Min(Money money1, Money money2) => new Money(Math.Min(money1._value, money2._value));
+        
         private readonly decimal _value;
 
         public Money(decimal value)

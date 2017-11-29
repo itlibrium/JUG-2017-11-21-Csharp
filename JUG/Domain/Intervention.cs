@@ -22,13 +22,13 @@ namespace JUG.Domain
 
         private Intervention() { }
 
-        public void Finish(IEnumerable<ServiceAction> serviceActions, PricePolicy pricePolicy)
+        public void Finish(IEnumerable<ServiceAction> serviceActions, InterventionPricing interventionPricing)
         {
             if (ServiceActions != null)
                 throw new BusinessException("Nie można zakończyć interwencji więcej niż raz");
 
             ServiceActions = serviceActions.ToList();
-            Price = ServiceActions.Aggregate(Money.Zero, (total, serviceAction) => total + pricePolicy(serviceAction));
+            Price = interventionPricing.TotalPrice;
         }
 
         //...

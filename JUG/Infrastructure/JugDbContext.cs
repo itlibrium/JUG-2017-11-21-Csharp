@@ -10,6 +10,7 @@ namespace JUG.Infrastructure
         public DbSet<Client> Clients { get; set; }
         public DbSet<SparePart> SpareParts { get; set; }
         public DbSet<Intervention> Interventions { get; set; }
+        public DbSet<Contract> Contracts { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

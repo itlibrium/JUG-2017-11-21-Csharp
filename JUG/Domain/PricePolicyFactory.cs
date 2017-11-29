@@ -19,10 +19,11 @@ namespace JUG.Domain
         {
             PricingCategory pricingCategory = await _crmFacade.GetPricingCategoryForClient(intervention.ClientId);
             IReadOnlyDictionary<int, Money> sparePartPrices = await _sparePartsFacade.GetPrices();
+            EquipmentModel equipmentModel = await _crmFacade.GetEquipmentModelForClient(intervention.ClientId);
             
             return PricePolicies.Sum(
                 PricePolicies
-                    .Labour(pricingCategory.PricePerHour, pricingCategory.MinPrice)
+                    .Labour(pricingCategory.PricePerHour, pricingCategory.MinPrice, equipmentModel.FreeInterventionTimeLimit)
                     .When(IsNotWarranty),
                 PricePolicies
                     .SparePartsCost(sparePartPrices)

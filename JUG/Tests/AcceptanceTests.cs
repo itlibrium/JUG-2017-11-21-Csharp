@@ -73,6 +73,91 @@ namespace JUG.Tests
                 .Then(f => f.PriceShouldBe(0))
                 .Test();
         }
+        
+        [Fact]
+        public void FreeServicesUsedIsUpdatedWhenFreeServiceIsAvailable()
+        {
+            BddScenario
+                .Given<Fixture>()
+                    .And(f => f.MinPrice(200))
+                    .And(f => f.PricePerHour(100))
+                    .And(f => f.Duration(3))
+                    .And(f => f.UsedSparePartPrices(500, 300))
+                    .And(f => f.AvailableFreeInterventions(2))
+                .When(f => f.ServiceIsFinished())
+                .Then(f => f.FreeInterventionsUsedShouldBe(1))
+                .Test();
+        }
+        
+        [Fact]
+        public void LabourCostIsNotAddedWhenFreeServiceIsAvailable()
+        {
+            BddScenario
+                .Given<Fixture>()
+                    .And(f => f.MinPrice(200))
+                    .And(f => f.PricePerHour(100))
+                    .And(f => f.Duration(3))
+                    .And(f => f.UsedSparePartPrices(500, 300))
+                    .And(f => f.AvailableFreeInterventions(2))
+                    .And(f => f.FreeInterventionTimeLimit(5))
+                .When(f => f.ServiceIsFinished())
+                .Then(f => f.PriceShouldBe(800))
+                .Test();
+        }
+        
+        
+        
+        [Fact]
+        public void LabourCostOverLimitIsAddedInFreeService()
+        {
+            BddScenario
+                .Given<Fixture>()
+                    .And(f => f.MinPrice(200))
+                    .And(f => f.PricePerHour(100))
+                    .And(f => f.Duration(3))
+                    .And(f => f.UsedSparePartPrices(500, 300))
+                    .And(f => f.AvailableFreeInterventions(2))
+                    .And(f => f.FreeInterventionTimeLimit(2))
+                .When(f => f.ServiceIsFinished())
+                .Then(f => f.PriceShouldBe(900))
+                .Test();
+        }
+        
+        [Fact]
+        public void SparePartsCostIsNotAddedIfLessThenAvailableLimit()
+        {
+            BddScenario
+                .Given<Fixture>()
+                    .And(f => f.MinPrice(200))
+                    .And(f => f.PricePerHour(100))
+                    .And(f => f.Duration(3))
+                    .And(f => f.UsedSparePartPrices(500, 300))
+                    .And(f => f.AvailableFreeInterventions(2))
+                    .And(f => f.FreeInterventionTimeLimit(5))
+                    .And(f => f.AvailableSparePartsCostLimit(1000))
+                .When(f => f.ServiceIsFinished())
+                .Then(f => f.PriceShouldBe(0))
+                    .And(f => f.SparePartsCostLimitUsedShouldBe(800))
+                .Test();
+        }
+
+        [Fact]
+        public void SparePartsCostOverAvailableLimitIsAdded()
+        {
+            BddScenario
+                .Given<Fixture>()
+                    .And(f => f.MinPrice(200))
+                    .And(f => f.PricePerHour(100))
+                    .And(f => f.Duration(3))
+                    .And(f => f.UsedSparePartPrices(500, 300))
+                    .And(f => f.AvailableFreeInterventions(2))
+                    .And(f => f.FreeInterventionTimeLimit(5))
+                    .And(f => f.AvailableSparePartsCostLimit(500))
+                .When(f => f.ServiceIsFinished())
+                .Then(f => f.PriceShouldBe(300))
+                    .And(f => f.SparePartsCostLimitUsedShouldBe(500))
+                .Test();
+        }
 
         private class Fixture
         {
@@ -81,10 +166,14 @@ namespace JUG.Tests
             private double _duration;
             private readonly List<SparePart> _usedSpareParts = new List<SparePart>();
             private bool _isWarranty;
+            private int _freeInterventions;
+            private double _freeInterventionTimeLimit;
+            private decimal _sparePartsCostLimit;
 
             private bool _isInitialized;
 
             private int _interventionId;
+            private int _clientId;
 
             private ICommandHandler<FinishInterventionCommand> _handler;
             private JugDbContext _dbContext;
@@ -94,6 +183,9 @@ namespace JUG.Tests
             public void Duration(double hours) => _duration = hours;
             public void UsedSparePartPrices(params decimal[] prices) => _usedSpareParts.AddRange(prices.Select(p => new SparePart { Price = p }));
             public void IsWarrantyService() => _isWarranty = true;
+            public void AvailableFreeInterventions(int freeServices) => _freeInterventions = freeServices;
+            public void FreeInterventionTimeLimit(double hours) => _freeInterventionTimeLimit = hours;
+            public void AvailableSparePartsCostLimit(decimal sparePartsCostLimit) => _sparePartsCostLimit = sparePartsCostLimit;
 
             public void ServiceIsFinished()
             {
@@ -109,10 +201,15 @@ namespace JUG.Tests
                                 SparePartIds = _usedSpareParts.Count == 0 ? new int[0] : _usedSpareParts.Select(p => p.Id).ToArray()
                             }}))
                     .Wait();
+                _dbContext.SaveChanges();
             }
 
             public void PriceShouldBe(decimal price) => _dbContext.Interventions.Find(_interventionId).Price.Should().Be(Money.FromDecimal(price));
-            
+            public void FreeInterventionsUsedShouldBe(int count) => 
+                _dbContext.Contracts.Single(c => c.ClientId == _clientId).FreeInterventionsLimitUsed.Should().Be(count);
+            public void SparePartsCostLimitUsedShouldBe(decimal value) =>
+                _dbContext.Contracts.Single(c => c.ClientId == _clientId).SparePartsCostLimitUsed.Should().Be(Money.FromDecimal(value));
+
             private void Initialize()
             {
                 if (_isInitialized)
@@ -120,7 +217,7 @@ namespace JUG.Tests
 
                 Container container = CreateContainer();
                 var dbContext = container.GetInstance<JugDbContext>();
-
+                
                 dbContext.SpareParts.AddRange(_usedSpareParts);
 
                 var client = new Client
@@ -131,14 +228,26 @@ namespace JUG.Tests
                         {
                             MinPrice = _minPrice,
                             PricePerHour = _pricePerHour
-                        }
+                        },
+                        FreeInterventionTimeLimit = _freeInterventionTimeLimit
                     }
                 };
                 dbContext.Clients.Add(client);
+                dbContext.SaveChanges();
+                _clientId = client.Id;
 
+                if (_freeInterventions > 0 || _sparePartsCostLimit > 0)
+                {
+                    var contract = new Contract(
+                        client.Id,
+                        _freeInterventions, 0,
+                        Money.FromDecimal(_sparePartsCostLimit), Money.Zero);
+                    dbContext.Contracts.Add(contract);
+                    dbContext.SaveChanges();
+                }
+                
                 var intervention = Intervention.CreateFor(client.Id);
                 dbContext.Interventions.Add(intervention);
-
                 dbContext.SaveChanges();
                 _interventionId = intervention.Id;
 

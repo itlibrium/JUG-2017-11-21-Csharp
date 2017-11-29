@@ -5,6 +5,8 @@
         public int Id { get; set; }
         public string Name { get; set; }
         public PricingCategory PricingCategory { get; set; }
+        
+        public double FreeInterventionTimeLimit { get; set; }
 
         //...
     }

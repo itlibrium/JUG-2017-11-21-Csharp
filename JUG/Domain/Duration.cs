@@ -15,5 +15,11 @@ namespace JUG.Domain
             if (value.TotalHours < 0) throw new ArgumentException(nameof(value));
             _value = value;
         }
+        
+        public static Duration operator+ (Duration x, Duration y) 
+            => new Duration(x._value + y._value);
+        
+        public static Duration operator- (Duration x, Duration y) 
+            => new Duration(x._value < y._value ? TimeSpan.Zero : x._value - y._value);
     }
 }
