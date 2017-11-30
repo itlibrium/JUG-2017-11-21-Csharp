@@ -34,71 +34,110 @@ namespace JUG.Logic
                 throw new BusinessException("Nieprawidłowy status usługi");
 
             service.Duration = duration;
+            service.SpareParts = GetSpareParts(sparePartIds);
+            service.Price = GetPrice(service);
+            service.Status = ServiceStatus.Done;
+            
+            _serviceRepository.Save(service);
+        }
+        
+        private List<SparePart> GetSpareParts(IEnumerable<int> sparePartIds)
+        {
             
             var spareParts = new List<SparePart>();
             foreach (int sparePartId in sparePartIds)
             {
                 spareParts.Add(_sparePartRepository.Get(sparePartId));
             }
-            service.SpareParts = spareParts;
-
+            return spareParts;
+        }
+        
+        private decimal GetPrice(Service service)
+        {
             if (service.IsWarranty)
+                return GetWarrantyPrice();
+
+            return GetNormalServicePrice(service);
+        }
+
+        private static decimal GetWarrantyPrice() => 0;
+
+        private decimal GetNormalServicePrice(Service service)
+        {
+            EquipmentModel equipmentModel = service.Client.EquipmentModel;
+            PricingCategory pricingCategory = equipmentModel.PricingCategory;
+            Contract contract = service.Client.Contract;
+            
+            decimal sparePartsCost = GetSparePartsCost(service);
+            
+            if (contract == null)
             {
-                service.Price = 0;
+                return Math.Max(pricingCategory.MinPrice, pricingCategory.PricePerHour * (decimal) service.Duration) + sparePartsCost;
+            }
+
+            return GetPriceForServiceUnderContract(service, contract, sparePartsCost);
+        }
+        
+        private static decimal GetSparePartsCost(Service service)
+        {
+            decimal sparePartsCost = 0;
+            foreach (SparePart sparePart in service.SpareParts)
+            {
+                sparePartsCost += sparePart.Price;
+            }
+            return sparePartsCost;
+        }
+        
+        private decimal GetPriceForServiceUnderContract(Service service, Contract contract, decimal sparePartsCost)
+        {
+            EquipmentModel equipmentModel = service.Client.EquipmentModel;
+            PricingCategory pricingCategory = equipmentModel.PricingCategory;
+            
+            sparePartsCost = UpdateSparePartsCostLimit(contract, sparePartsCost);
+            decimal price = sparePartsCost;
+                    
+            if (contract.FreeServicesUsed < contract.FreeServices)
+            {
+                contract.FreeServicesUsed++;
+                price += GetPriceForTimeOverLimit(service);
             }
             else
             {
-                decimal sparePartsCost = 0;
-                foreach (SparePart sparePart in service.SpareParts)
-                {
-                    sparePartsCost += sparePart.Price;
-                }
-
-                Contract contract = service.Client.Contract;
-                if (contract == null)
-                {
-                    PricingCategory pricingCategory = service.Client.EquipmentModel.PricingCategory;
-                    service.Price = Math.Max(pricingCategory.MinPrice, pricingCategory.PricePerHour * (decimal)service.Duration) + sparePartsCost;
-                }
-                else
-                {
-                    decimal price = 0;
-                    decimal sparePartsCostLimit = contract.SparePartsCostLimit - contract.SparePartsCostLimitUsed;
-                    if (sparePartsCostLimit >= sparePartsCost)
-                    {
-                        contract.SparePartsCostLimitUsed += sparePartsCost;
-                        sparePartsCost = 0;
-                    }
-                    else
-                    {
-                        contract.SparePartsCostLimitUsed = 0;
-                        sparePartsCost -= sparePartsCostLimit;
-                    }
-                    price += sparePartsCost;
-
-                    if (contract.FreeServicesUsed < contract.FreeServices)
-                    {
-                        contract.FreeServicesUsed++;
-                        
-                        double freeServiceTimeLimit = service.Client.EquipmentModel.FreeServiceTimeLimit;
-                        if (service.Duration > freeServiceTimeLimit)
-                        {
-                            price += service.Client.EquipmentModel.PricingCategory.PricePerHour * (decimal)(service.Duration - freeServiceTimeLimit);
-                        }
-                    }
-                    else
-                    {
-                        PricingCategory pricingCategory = service.Client.EquipmentModel.PricingCategory;
-                        price += Math.Max(pricingCategory.MinPrice, pricingCategory.PricePerHour * (decimal)service.Duration);
-                    }
-
-                    _contractRepository.Save(contract);
-                    service.Price = price;
-                }
+                price += Math.Max(pricingCategory.MinPrice, pricingCategory.PricePerHour * (decimal) service.Duration);
             }
+                    
+            _contractRepository.Save(contract);
+            return price;
+        }
+        
+        private static decimal UpdateSparePartsCostLimit(Contract contract, decimal sparePartsCost)
+        {
+            decimal sparePartsCostLimit = contract.SparePartsCostLimit - contract.SparePartsCostLimitUsed;
+            if (sparePartsCostLimit >= sparePartsCost)
+            {
+                contract.SparePartsCostLimitUsed += sparePartsCost;
+                sparePartsCost = 0;
+            }
+            else
+            {
+                contract.SparePartsCostLimitUsed = 0;
+                sparePartsCost -= sparePartsCostLimit;
+            }
+            return sparePartsCost;
+        }
+
+        private static decimal GetPriceForTimeOverLimit(Service service)
+        {
+            EquipmentModel equipmentModel = service.Client.EquipmentModel;
+            PricingCategory pricingCategory = equipmentModel.PricingCategory;
             
-            service.Status = ServiceStatus.Done;
-            _serviceRepository.Save(service);
+            double freeServiceTimeLimit = equipmentModel.FreeServiceTimeLimit;
+            if (service.Duration > freeServiceTimeLimit)
+            {
+                return pricingCategory.PricePerHour * (decimal) (service.Duration - freeServiceTimeLimit);
+            }
+
+            return 0;
         }
         
         //...
